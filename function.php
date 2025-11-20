@@ -87,30 +87,44 @@ function if_login() {
 function login() {
     $user = $_POST['user'];
     $pass = $_POST['pass'];
-    $sql = "SELECT * FROM `admin` WHERE `user` = '$user'";
-    
+
     $connectDatabase = connectDatabase();
-    $result = $connectDatabase->query($sql);
-if($result){
-    if ($result->num_rows == 1) {
-        $row = $result->fetch_assoc();
-        if ($pass == $row['pass']) {
-            $_SESSION['user'] = $user;
-            $response["success"] = true;
-            $response["message"] = "登录成功，感谢使用";
+
+    // 使用预处理语句防止SQL注入
+    $sql = "SELECT * FROM `admin` WHERE `user` = ?";
+    $stmt = $connectDatabase->prepare($sql);
+
+    if ($stmt) {
+        $stmt->bind_param("s", $user);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if($result){
+            if ($result->num_rows == 1) {
+                $row = $result->fetch_assoc();
+                if ($pass == $row['pass']) {
+                    $_SESSION['user'] = $user;
+                    $response["success"] = true;
+                    $response["message"] = "登录成功，感谢使用";
+                } else {
+                    $response["success"] = false;
+                    $response["message"] = "密码错误";
+                }
+            } else {
+                $response["success"] = false;
+                $response["message"] = "账号不存在";
+            }
         } else {
             $response["success"] = false;
-            $response["message"] = "密码错误";
+            $response["message"] = "查询失败，可能是数据库出现问题";
         }
+
+        $stmt->close();
     } else {
         $response["success"] = false;
-        $response["message"] = "账号不存在";
+        $response["message"] = "数据库查询准备失败";
     }
-}else{
-     $response["success"] = false;
-        $response["message"] = "查询失败，可能是数据库出现问题";
-}
-  
+
     $connectDatabase->close();
     return json_encode($response);
 }
