@@ -65,16 +65,25 @@ function if_login() {
     if (isset($_SESSION['user'])) {
         $user = $_SESSION['user'];
         $connectDatabase = connectDatabase();
-        $sql = "SELECT * FROM `admin` WHERE `user` LIKE '$user'";
-        $result = $connectDatabase->query($sql);
+
+        // 使用预处理语句
+        $sql = "SELECT * FROM `admin` WHERE `user` = ?";
+        $stmt = $connectDatabase->prepare($sql);
+        $stmt->bind_param("s", $user);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
         if ($result->num_rows == 1) {
-                return true;
+            $stmt->close();
+            $connectDatabase->close();
+            return true;
         }
+
+        $stmt->close();
         $connectDatabase->close();
     }
     return false;
 }
-
 function login() {
     $user = $_POST['user'];
     $pass = $_POST['pass'];
